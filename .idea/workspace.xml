@@ -15,6 +15,9 @@
       <entry key="_C:/Users/maryh/WebstormProjects/saludplus-api" value="3A7ktDdxVzvJQHpmhG7nT4z2R3Z" />
     </persistenceIdMap>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectColorInfo"><![CDATA[{
   "customColor": "",
   "associatedIndex": 3
@@ -30,6 +33,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "master",
     "javascript.preferred.runtime.type.id": "node",
     "last_opened_file_path": "C:/Users/maryh/WebstormProjects/saludplus-api/data",
     "node.js.detected.package.eslint": "true",
@@ -80,7 +84,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1771951212613</updated>
-      <workItem from="1771951216469" duration="5886000" />
+      <workItem from="1771951216469" duration="6335000" />
     </task>
     <servers />
   </component>

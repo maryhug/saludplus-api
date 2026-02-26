@@ -1,49 +1,64 @@
+// src/services/migrationService.js
+
+// Módulos nativos para trabajar con el sistema de archivos y rutas.
 const fs   = require('fs');
 const path = require('path');
+// csv-parse/sync permite leer el CSV completo de forma síncrona y obtener un arreglo de objetos.
 const { parse } = require('csv-parse/sync');
+// Funciones y pool de PostgreSQL: ejecutar queries, inicializar el esquema y manejar la conexión.
 const { query, initSchema, pool } = require('../config/postgres');
+// Modelo de MongoDB donde se guardan los historiales de pacientes.
 const { PatientHistory } = require('../config/mongodb');
+// Ruta del CSV definida en variables de entorno/configuración.
 const { CSV_PATH } = require('../config/env');
 
+// Función utilitaria para capitalizar nombres (cada palabra con primera letra en mayúscula).
 const capitalize = str =>
     str ? str.trim().split(' ')
             .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
             .join(' ')
         : '';
 
+// Servicio principal de migración: lee el CSV y pobla PostgreSQL + MongoDB.
 const migrate = async ({ clearBefore = false } = {}) => {
+    // Resuelve la ruta absoluta del archivo CSV.
     const csvPath = path.resolve(CSV_PATH);
     if (!fs.existsSync(csvPath)) throw new Error(`CSV not found at: ${csvPath}`);
 
+    // Lee el contenido del archivo y lo parsea a filas con cabeceras (columns: true).
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
     const rows = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
 
+    // Se asegura de que el esquema de PostgreSQL exista antes de insertar datos.
     await initSchema();
 
     const client = await pool.connect();
     try {
+        // Inicia una transacción para que la migración sea atómica en PostgreSQL.
         await client.query('BEGIN');
 
         if (clearBefore) {
-            // Orden importante: primero la tabla que tiene FKs
+            // Limpieza previa, respetando el orden de dependencias (FKs).
             await client.query('DELETE FROM appointments');
             await client.query('DELETE FROM treatments');
             await client.query('DELETE FROM patients');
             await client.query('DELETE FROM doctors');
             await client.query('DELETE FROM insurances');
+            // Limpia también los historiales en MongoDB.
             await PatientHistory.deleteMany({});
             console.log('🗑️  Previous data cleared');
         }
 
         // ── Extraer entidades únicas del CSV ──────────────────────────
 
+        // Se utilizan Maps para evitar duplicados y construir catálogos normalizados.
         const patientsMap   = new Map(); // key: email
         const doctorsMap    = new Map(); // key: email
         const insurancesMap = new Map(); // key: name
-        const treatmentsMap = new Map(); // key: code  ← NUEVO
+        const treatmentsMap = new Map(); // key: code
 
         for (const row of rows) {
-            // Patients
+            // Patients: se agrupan por email, que será la clave en PostgreSQL y Mongo.
             const pEmail = row.patient_email.toLowerCase().trim();
             if (!patientsMap.has(pEmail)) {
                 patientsMap.set(pEmail, {
@@ -54,7 +69,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
                 });
             }
 
-            // Doctors
+            // Doctors: se agrupan por email y se guarda especialidad.
             const dEmail = row.doctor_email.toLowerCase().trim();
             if (!doctorsMap.has(dEmail)) {
                 doctorsMap.set(dEmail, {
@@ -64,7 +79,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
                 });
             }
 
-            // Insurances (incluye "SinSeguro" con 0%)
+            // Insurances: incluye casos como "SinSeguro" con 0% de cobertura.
             const ins = row.insurance_provider?.trim();
             if (ins && !insurancesMap.has(ins)) {
                 insurancesMap.set(ins, {
@@ -73,7 +88,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
                 });
             }
 
-            // Treatments ← NUEVO: código único con descripción y costo
+            // Treatments: cada código de tratamiento es único y se normaliza en su tabla.
             const tCode = row.treatment_code?.trim();
             if (tCode && !treatmentsMap.has(tCode)) {
                 treatmentsMap.set(tCode, {
@@ -95,6 +110,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
          RETURNING id`,
                 [p.name, p.email, p.phone, p.address]
             );
+            // Se guarda el id generado/actualizado para mapear luego las citas.
             patientIdMap.set(p.email, res.rows[0].id);
         }
         console.log(`👤 Patients upserted: ${patientsMap.size}`);
@@ -129,7 +145,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
         }
         console.log(`🏥 Insurances upserted: ${insurancesMap.size}`);
 
-        // ── UPSERT treatments ← NUEVO ─────────────────────────────────
+        // ── UPSERT treatments ─────────────────────────────────────────
         const treatmentIdMap = new Map();
         for (const t of treatmentsMap.values()) {
             const res = await client.query(
@@ -147,17 +163,19 @@ const migrate = async ({ clearBefore = false } = {}) => {
         // ── INSERT appointments ───────────────────────────────────────
         let appointmentCount = 0;
         for (const row of rows) {
+            // Se obtienen los ids FK a partir de los maps.
             const patientId   = patientIdMap.get(row.patient_email.toLowerCase().trim());
             const doctorId    = doctorIdMap.get(row.doctor_email.toLowerCase().trim());
             const insuranceId = insuranceIdMap.get(row.insurance_provider?.trim());
             const treatmentId = treatmentIdMap.get(row.treatment_code?.trim());
 
-            // Validar que todas las FKs existen antes de insertar
+            // Si falta alguna FK, se salta la fila y se avisa en consola.
             if (!patientId || !doctorId || !insuranceId || !treatmentId) {
                 console.warn(`⚠️  Skipping ${row.appointment_id}: missing FK reference`);
                 continue;
             }
 
+            // Inserta la cita relacionando todas las entidades normalizadas.
             await client.query(
                 `INSERT INTO appointments
            (appointment_id, appointment_date, patient_id, doctor_id,
@@ -169,8 +187,8 @@ const migrate = async ({ clearBefore = false } = {}) => {
                     row.appointment_date,
                     patientId,
                     doctorId,
-                    treatmentId,    // ← FK a treatments
-                    insuranceId,    // ← NOT NULL, siempre presente
+                    treatmentId,
+                    insuranceId,
                     parseFloat(row.amount_paid),
                 ]
             );
@@ -178,9 +196,11 @@ const migrate = async ({ clearBefore = false } = {}) => {
         }
         console.log(`📅 Appointments inserted: ${appointmentCount}`);
 
+        // Cierra la transacción de PostgreSQL si todo salió bien.
         await client.query('COMMIT');
 
         // ── MongoDB: construir historiales de pacientes ───────────────
+        // Aquí se construye una versión desnormalizada para consultas rápidas de historial.
         const historiesMap = new Map();
         for (const row of rows) {
             const email = row.patient_email.toLowerCase().trim();
@@ -206,6 +226,7 @@ const migrate = async ({ clearBefore = false } = {}) => {
             });
         }
 
+        // Upsert de cada historial en la colección PatientHistory.
         for (const history of historiesMap.values()) {
             await PatientHistory.findOneAndUpdate(
                 { patientEmail: history.patientEmail },
@@ -215,22 +236,26 @@ const migrate = async ({ clearBefore = false } = {}) => {
         }
         console.log(`📋 Patient histories upserted: ${historiesMap.size}`);
 
+        // Resumen de la migración, útil para logs y para devolver en el endpoint /migrate.
         return {
             patients:     patientsMap.size,
             doctors:      doctorsMap.size,
             insurances:   insurancesMap.size,
-            treatments:   treatmentsMap.size,   // ← nuevo en el reporte
+            treatments:   treatmentsMap.size,
             appointments: appointmentCount,
             histories:    historiesMap.size,
             csvPath:      CSV_PATH,
         };
 
     } catch (err) {
+        // Si algo falla, se revierte la transacción en PostgreSQL.
         await client.query('ROLLBACK');
         throw err;
     } finally {
+        // Libera el cliente al pool.
         client.release();
     }
 };
 
+// Exporta la función migrate para usarla desde scripts y rutas.
 module.exports = { migrate };

@@ -695,14 +695,27 @@ Response:
 
 Crea una colección en Postman llamada **SaludPlus API** con las siguientes solicitudes:
 
-- `GET  {{baseUrl}}/api/simulacro`
+- `GET {{baseUrl}}/api/simulacro`
 - `POST {{baseUrl}}/api/simulacro/migrate`
-- `GET  {{baseUrl}}/api/doctors`
-- `GET  {{baseUrl}}/api/doctors/:id`
-- `PUT  {{baseUrl}}/api/doctors/:id`
-- `GET  {{baseUrl}}/api/reports/revenue`
-- `GET  {{baseUrl}}/api/reports/revenue?startDate=...&endDate=...`
-- `GET  {{baseUrl}}/api/patients/:email/history`
+- `GET {{baseUrl}}/api/patients`
+- `GET {{baseUrl}}/api/patients/:id`
+- `POST {{baseUrl}}/api/patients`
+- `PUT {{baseUrl}}/api/patients/:id`
+- `GET {{baseUrl}}/api/patients/:email/history`
+- `GET {{baseUrl}}/api/doctors`
+- `GET {{baseUrl}}/api/doctors/:id`
+- `POST {{baseUrl}}/api/doctors`
+- `PUT {{baseUrl}}/api/doctors/:id`
+- `DELETE {{baseUrl}}/api/doctors/:id`
+- `GET {{baseUrl}}/api/treatments`
+- `GET {{baseUrl}}/api/treatments/:id`
+- `POST {{baseUrl}}/api/treatments`
+- `GET {{baseUrl}}/api/insurances`
+- `GET {{baseUrl}}/api/insurances/:id`
+- `POST {{baseUrl}}/api/insurances`
+- `POST {{baseUrl}}/api/appointments`
+- `GET {{baseUrl}}/api/reports/revenue`
+- `GET {{baseUrl}}/api/reports/revenue?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
 
 Variables de entorno:
 
@@ -752,3 +765,6 @@ npm run dev      # Recrea el esquema
 - Las migraciones SQL y el procesamiento del CSV están diseñados para ser **idempotentes**:
     - Volver a ejecutar la migración **no** duplicará pacientes, médicos, aseguradoras, tratamientos ni citas.
 - MongoDB utiliza `findOneAndUpdate` con `upsert` para mantener las historias clínicas sincronizadas.
+
+## 13.  Documentación con diagramas visuales
+![supabase-schema.png](data/supabase-schema.png)

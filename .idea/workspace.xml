@@ -5,14 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="793306c2-55aa-4a00-a0f7-2aba364c4999" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/reset.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/reset.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/run-migration.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/run-migration.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config/env.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/env.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config/mongodb.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/mongodb.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config/postgres.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/config/postgres.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/routes/appointments.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/appointments.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/routes/doctors.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/doctors.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/routes/insurances.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/routes/insurances.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,7 +94,7 @@
       <updated>1771951212613</updated>
       <workItem from="1771951216469" duration="6795000" />
       <workItem from="1771977425014" duration="1192000" />
-      <workItem from="1772019857569" duration="17616000" />
+      <workItem from="1772019857569" duration="17959000" />
     </task>
     <servers />
   </component>

@@ -1,6 +1,12 @@
+// src/routes/simulacro.js
+
+// Crea un router de Express para los endpoints específicos del simulacro.
 const router = require('express').Router();
+// Importa el servicio de migración, que se encarga de leer el CSV y poblar PostgreSQL + MongoDB.
 const { migrate } = require('../services/migrationService');
 
+// Endpoint informativo: GET /api/simulacro
+// Devuelve una descripción corta de la API y lista de endpoints disponibles para el simulacro.
 router.get('/', (req, res) => {
     res.json({
         ok: true,
@@ -16,9 +22,14 @@ router.get('/', (req, res) => {
     });
 });
 
+// Endpoint: POST /api/simulacro/migrate
+// Dispara la migración de datos desde el CSV hacia PostgreSQL y MongoDB.
+// El body puede incluir { clearBefore: true } para limpiar antes de migrar.
 router.post('/migrate', async (req, res) => {
     try {
+        // Si el cliente no envía clearBefore, por defecto es false.
         const { clearBefore = false } = req.body || {};
+        // Ejecuta la migración y recibe un resultado/resumen (por ejemplo conteos).
         const result = await migrate({ clearBefore });
         res.json({ ok: true, message: 'Migration completed successfully', result });
     } catch (err) {
@@ -27,4 +38,5 @@ router.post('/migrate', async (req, res) => {
     }
 });
 
+// Exporta el router para montarlo bajo /api/simulacro en el archivo principal.
 module.exports = router;

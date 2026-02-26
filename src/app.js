@@ -23,6 +23,8 @@ app.use('/api/patients',    require('./routes/patients'));
 app.use('/api/treatments',  require('./routes/treatments'));
 app.use('/api/insurances',  require('./routes/insurances'));
 app.use('/api/appointments', require('./routes/appointments'));
+app.use('/api/status', require('./routes/status'));
+
 
 // Manejador 404 genérico: si ninguna ruta anterior respondió,
 // se devuelve un JSON estándar indicando que la ruta no existe.

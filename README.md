@@ -1,121 +1,100 @@
-# SaludPlus Hybrid Persistence API
+# SaludPlus
 
-API REST para la red de clínicas médicas **SaludPlus**, con arquitectura de persistencia híbrida:
+REST API for the **SaludPlus** medical clinic network, built with a hybrid persistence architecture:
 
-- **PostgreSQL (Supabase)** → Datos estructurados con relaciones fuertes  
-  (pacientes, médicos, aseguradoras, tratamientos, citas).
-- **MongoDB Atlas** → Historias clínicas de pacientes en documentos, optimizadas para lecturas rápidas.
+- **PostgreSQL (Supabase)** → Structured data with strong relational integrity  
+  (patients, doctors, insurers, treatments, appointments).
+- **MongoDB Atlas** → Patient medical histories as documents, optimized for fast reads.
 
-El proyecto carga datos desde un archivo CSV en ambas bases de datos, expone endpoints REST y permite reiniciar y reconstruir completamente el esquema y los datos.
+The project loads data from a CSV file into both databases, exposes REST endpoints, and supports fully resetting and rebuilding the schema and data.
 
 ---
 
-## 1. Descripción General
+## 1. General Overview
 
-### Funcionalidades
+### Features
 
-- Esquema relacional en 3FN (pacientes, médicos, aseguradoras, tratamientos, citas).
-- Colección MongoDB `patient_histories` con citas embebidas.
-- Migración masiva desde CSV (deduplicación + normalización).
-- API REST con endpoints para:
-    - CRUD de médicos (lectura/actualización).
-    - Reporte de ingresos por aseguradora.
-    - Historia clínica de pacientes.
-- **Script de reset completo** (elimina tablas SQL y colección MongoDB).
-- Migración idempotente: se puede ejecutar múltiples veces sin duplicar datos.
+- Relational schema in 3NF (patients, doctors, insurers, treatments, appointments).
+- MongoDB `patienthistories` collection with embedded appointments.
+- Bulk migration from CSV (deduplication + normalization).
+- REST API with endpoints for:
+  - Full CRUD for doctors, patients, treatments, and insurers.
+  - Appointment creation synchronized between PostgreSQL and MongoDB.
+  - Revenue report by insurance provider.
+  - Patient medical history.
+- **Full reset script** (drops SQL tables and MongoDB collection).
+- Idempotent migration: can be run multiple times without duplicating data.
+- Data status endpoint (`/api/status`) to check whether the schema is initialized and whether records exist.
 
-### Stack Tecnológico
+### Technology Stack
 
 - **Runtime:** Node.js 18+
 - **Framework:** Express 4.x
-- **BD Relacional:** PostgreSQL (Supabase)
-- **BD Documental:** MongoDB Atlas
-- **Lenguaje:** JavaScript (ES6+)
-- **Gestor de paquetes:** npm
+- **Relational DB:** PostgreSQL (Supabase)
+- **Document DB:** MongoDB Atlas
+- **Language:** JavaScript (ES6+)
+- **Package manager:** npm
 
 ---
 
-## 2. Decisiones de Arquitectura
+## 2. Architecture Decisions
 
-### ¿Por qué PostgreSQL (Supabase)?
+### Why PostgreSQL (Supabase)?
 
-- **Integridad referencial** sólida (claves foráneas entre pacientes, médicos, aseguradoras, tratamientos y citas).
-- Garantías **ACID** para datos financieros (`amount_paid`, `treatment.cost`).
-- **Agregaciones eficientes** para reportes (ingresos por aseguradora, filtros por rango de fechas).
+- Strong **referential integrity** (foreign keys between patients, doctors, insurers, treatments, and appointments).
+- **ACID guarantees** for financial data (`amount_paid`, `treatment.cost`).
+- **Efficient aggregations** for reports (revenue by insurer, date range filters).
 
-### ¿Por qué MongoDB Atlas?
+### Why MongoDB Atlas?
 
-- Las historias clínicas se leen como un **documento completo** (todas las citas a la vez).
-- Las citas embebidas evitan JOINs y reducen la latencia en consultas de historial.
-- El esquema puede evolucionar (campos extra, notas, adjuntos) sin migraciones.
+- Medical histories are read as a **single complete document** (all appointments at once).
+- Embedded appointments avoid JOINs and reduce latency for history queries.
+- The schema can evolve freely (extra fields, notes, attachments) without migrations.
 
-### Normalización SQL (1FN → 3FN)
+### SQL Normalization (1NF → 3NF)
 
-- **1FN:** Cada columna contiene valores atómicos; sin grupos repetidos.
-- **2FN:** Todos los atributos no clave dependen de la clave primaria completa.
-- **3FN:** Sin dependencias transitivas:
-    - Información de tratamientos (`code`, `description`, `cost`) vive en `treatments`.
-    - Información de aseguradoras (`name`, `coverage_percentage`) vive en `insurances`.
-    - Las citas solo referencian estas entidades mediante claves foráneas.
+- **1NF:** Each column holds atomic values; no repeating groups.
+- **2NF:** All non-key attributes depend on the full primary key.
+- **3NF:** No transitive dependencies:
+  - Treatment data (`code`, `description`, `cost`) lives in `treatments`.
+  - Insurer data (`name`, `coverage_percentage`) lives in `insurances`.
+  - Appointments reference these entities only via foreign keys.
 
-### Embebido vs. Referenciado en MongoDB
+### Embedded vs. Referenced in MongoDB
 
-- Cada documento `patient_histories` contiene:
-    - `patientEmail`, `patientName`
-    - `appointments[]` (subdocumentos embebidos)
-- Se eligió esta estrategia porque:
-    - El historial siempre se recupera por **email del paciente**.
-    - La cantidad de citas por paciente es manejable.
-    - El embebido permite **lecturas de un solo documento** y consultas más simples.
+Each `patienthistories` document contains:
+- `patientEmail`, `patientName`
+- `appointments[]` (embedded subdocuments)
+
+This strategy was chosen because:
+- History is always retrieved by **patient email**.
+- The number of appointments per patient is manageable.
+- Embedding enables **single-document reads** and simpler queries.
 
 ---
 
-## 3. Esquemas de Base de Datos
+## 3. Database Schemas
 
-### Esquema PostgreSQL (Supabase)
+### PostgreSQL Schema (Supabase)
 
-```text
-patients
-  id (PK)
-  name
-  email (UNIQUE)
-  phone
-  address
-  created_at
+**Main tables:**
 
-doctors
-  id (PK)
-  name
-  email (UNIQUE)
-  specialty
-  created_at
+`patients`
+- `id` (PK), `name`, `email` (UNIQUE), `phone`, `address`, `created_at`
 
-insurances
-  id (PK)
-  name (UNIQUE)
-  coverage_percentage
-  created_at
+`doctors`
+- `id` (PK), `name`, `email` (UNIQUE), `specialty`, `created_at`
 
-treatments
-  id (PK)
-  code (UNIQUE)
-  description
-  cost
-  created_at
+`insurances`
+- `id` (PK), `name` (UNIQUE), `coverage_percentage`, `created_at`
 
-appointments
-  id (PK)
-  appointment_id (UNIQUE)
-  appointment_date
-  patient_id   (FK → patients.id)
-  doctor_id    (FK → doctors.id)
-  treatment_id (FK → treatments.id)
-  insurance_id (FK → insurances.id)
-  amount_paid
-  created_at
-```
+`treatments`
+- `id` (PK), `code` (UNIQUE), `description`, `cost`, `created_at`
 
-**Índices:**
+`appointments`
+- `id` (PK), `appointment_id` (UNIQUE), `appointment_date`, `patient_id` (FK), `doctor_id` (FK), `treatment_id` (FK), `insurance_id` (FK), `amount_paid`, `created_at`
+
+**Main indexes:**
 - `patients(email)`
 - `doctors(email)`
 - `doctors(specialty)`
@@ -123,9 +102,10 @@ appointments
 - `appointments(doctor_id)`
 - `appointments(appointment_date)`
 - `appointments(insurance_id)`
-- `appointments(treatment_id)`
 
-### Colección MongoDB: `patienthistories`
+### MongoDB Collection: `patienthistories`
+
+Example document:
 
 ```json
 {
@@ -149,103 +129,136 @@ appointments
 }
 ```
 
-Índice: `patientEmail` (único).
+Index: `patientEmail` (unique).
 
 ---
 
-## 4. Requisitos
+## 4. Requirements
 
-### Requisitos Comunes (Windows y Linux)
+### Common Requirements
 
-- Node.js 18+
-- npm
-- Proyecto en Supabase con:
-    - Cadena de conexión a la base de datos (URI de PostgreSQL)
-- Clúster en MongoDB Atlas con:
-    - Cadena de conexión (Driver: Node.js)
-    - Acceso por IP configurado
+- Node.js 18+ and npm
+- Supabase project with a PostgreSQL connection string
+- MongoDB Atlas cluster with a connection string (Node.js driver) and IP access configured
 
-### Archivo CSV
+### CSV File
 
-- Nombre: `simulacro_saludplus_data.csv`
-- Ubicación requerida: `./data/simulacro_saludplus_data.csv`
+- Name: `simulacro_saludplus_data.csv`
+- Required location: `./data/simulacro_saludplus_data.csv`
 
 ---
 
-## 5. Instrucciones de Configuración
+## 5. Setup Instructions
 
-### 5.1 Clonar e Instalar
+### 5.1 Clone & Install
 
 ```bash
-git clone https://github.com/TU_USUARIO/saludplus-api.git
+git clone https://github.com/maryhug/saludplus-api.git
 cd saludplus-api
 npm install
 ```
 
-### 5.2 Variables de Entorno
-
-Crear `.env` a partir del ejemplo:
+### 5.2 Environment Variables
 
 ```bash
 cp .env.example .env
 ```
 
-Editar `.env`:
+Edit `.env`:
 
 ```text
 PORT=3000
 
-# URI de PostgreSQL en Supabase (Configuración → Base de datos → Cadena de conexión → URI)
-DATABASE_URL=postgresql://USUARIO:CONTRASEÑA@HOST:PUERTO/postgres
+# PostgreSQL (Supabase)
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/postgres
 
-# URI de MongoDB Atlas (Conectar → Drivers → Copiar cadena de conexión)
-MONGODB_URI=mongodb+srv://USUARIO:CONTRASEÑA@cluster0.xxxxx.mongodb.net
+# MongoDB Atlas
+MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net
 MONGODB_DB=saludplus
 
-# Ruta del CSV
+# CSV
 SIMULACRO_CSV_PATH=./data/simulacro_saludplus_data.csv
-DATA_DIR=./data
 ```
 
-### 5.3 Colocar el CSV
+### 5.3 Place the CSV
 
 ```bash
 mkdir -p data
-# Copia tu archivo CSV en esta carpeta y renómbralo:
-# data/simulacro_saludplus_data.csv
+# Copy your CSV file into this folder:
+# ./data/simulacro_saludplus_data.csv
 ```
 
----
+### 5.4 MongoDB Atlas Network Access
 
-## 6. MongoDB Atlas: Acceso de Red
-
-Para permitir la conexión desde este proyecto:
-
-1. Abre tu proyecto en MongoDB Atlas.
-2. Ve a **Security → Network Access → IP Access List**.
-3. Haz clic en **Add IP Address**.
-4. Para desarrollo, puedes:
-    - Usar `0.0.0.0/0` (Permitir acceso desde cualquier lugar), o
-    - Usar **Add current IP address**.
-5. Confirma y espera 1–2 minutos.
+1. Go to **Security → Network Access → IP Access List**.
+2. Click **Add IP Address**.
+3. Add your current IP or use `0.0.0.0/0` for testing.
 
 ---
 
-## 7. Scripts NPM (Flujo de Trabajo)
+## 6. NPM Scripts & Workflow
 
-### 7.1 Iniciar el Servidor (crea el esquema automáticamente)
+### 6.1 Start the Server (auto-creates schema)
 
 ```bash
 npm run dev
 ```
 
-- Se conecta a Supabase y MongoDB.
-- Ejecuta la creación del esquema SQL (`initSchema()`).
-- Inicia Express en `http://localhost:3000`.
+This will:
+- Connect to PostgreSQL (Supabase) and MongoDB.
+- Run `initSchema()` to create tables and indexes if they don't exist.
+- Start Express at `http://localhost:3000`.
 
-### 7.2 Ejecutar Migración vía API (recomendado)
+### 6.2 Check Schema & Data Status (`/api/status`)
 
-Usando Postman o cualquier cliente REST:
+**GET /api/status**
+
+Three possible responses:
+
+**Schema NOT initialized** (need to run `npm run dev`):
+```json
+{
+  "ok": true,
+  "schemaReady": false,
+  "message": "PostgreSQL schema not initialized. Run \"npm run dev\" or initSchema() first."
+}
+```
+
+**Schema created but no data** (tables are empty):
+```json
+{
+  "ok": true,
+  "schemaReady": true,
+  "postgres": {
+    "patients": 0,
+    "doctors": 0,
+    "appointments": 0,
+    "treatments": 0,
+    "insurances": 0
+  },
+  "mongodb": { "histories": 0 },
+  "hasData": false,
+  "isEmpty": true,
+  "message": "Schema is created but there is no data yet. You can run \"npm run migrate\"."
+}
+```
+
+**Schema created with data loaded:**
+```json
+{
+  "ok": true,
+  "schemaReady": true,
+  "postgres": { "...": "..." },
+  "mongodb": { "...": "..." },
+  "hasData": true,
+  "isEmpty": false,
+  "message": "Schema and data are present."
+}
+```
+
+This endpoint helps determine whether to run `npm run dev`, `npm run migrate`, or `npm run reset`.
+
+### 6.3 Run Migration via API (recommended)
 
 ```text
 POST http://localhost:3000/api/simulacro/migrate
@@ -256,385 +269,111 @@ Content-Type: application/json
 }
 ```
 
-Respuesta de ejemplo:
+- Optionally clears existing data.
+- Loads CSV into PostgreSQL and MongoDB using upserts (idempotent).
 
-```json
-{
-  "ok": true,
-  "message": "Migration completed successfully",
-  "result": {
-    "patients": 10,
-    "doctors": 6,
-    "insurances": 4,
-    "treatments": 8,
-    "appointments": 100,
-    "histories": 10,
-    "csvPath": "./data/simulacro_saludplus_data.csv"
-  }
-}
-```
-
-### 7.3 Ejecutar Migración vía CLI (opcional)
+### 6.4 Run Migration via CLI (optional)
 
 ```bash
 npm run migrate
 ```
 
-- Se conecta a ambas bases de datos.
-- Asegura que el esquema exista.
-- Limpia los datos (con `clearBefore: true` dentro del script).
-- Carga el CSV en ambas bases de datos.
-
----
-
-## 8. Script de Reset Completo (Eliminar Todo)
-
-Para limpiar completamente ambas bases de datos (tablas + colección) y empezar desde cero:
+### 6.5 Full Reset
 
 ```bash
 npm run reset
 ```
 
-Este script:
+Drops tables `appointments`, `treatments`, `patients`, `doctors`, `insurances` in PostgreSQL and the `patienthistories` collection in MongoDB.
 
-- Se conecta a MongoDB y Supabase.
-- Elimina las tablas de PostgreSQL en orden seguro (respetando FK):
-    - `appointments`, `treatments`, `patients`, `doctors`, `insurances`.
-- Elimina la colección MongoDB `patienthistories`.
-
-Después del reset:
+Then to rebuild:
 
 ```bash
-npm run dev           # Recrea el esquema (tablas) automáticamente
-# Luego ejecuta la migración nuevamente:
-# POST /api/simulacro/migrate con {"clearBefore": true}
+npm run dev
+# Recreates the schema
+
+# Then run the migration:
+# POST /api/simulacro/migrate { "clearBefore": true }
 ```
 
 ---
 
-## 9. Documentación de la API
+## 7. API Documentation
 
-**Base URL:**
-
-```
-http://localhost:3000
-```
+**Base URL:** `http://localhost:3000`
 
 ---
 
-### 9.1 Simulacro / Migration
+### 7.1 Simulacro / Migration
 
 **GET /api/simulacro**
-Returns API info and available endpoints.
+Returns API info and a list of main endpoints.
 
 **POST /api/simulacro/migrate**
-
-Body:
-```json
-{
-  "clearBefore": true
-}
-```
-
-**Behavior:**
-- Optionally clears existing data.
-- Loads CSV into PostgreSQL and MongoDB.
-- Idempotent: running it again does not duplicate data.
+Body: `{ "clearBefore": true }`
 
 ---
 
-### 9.2 Patients (SQL + MongoDB for history)
+### 7.2 Data Status
 
-**GET /api/patients**
-List all patients.
+**GET /api/status**
 
-```json
-{
-  "ok": true,
-  "patients": [
-    {
-      "id": 1,
-      "name": "Valeria Gomez",
-      "email": "valeria.g@mail.com",
-      "phone": "3005555555",
-      "address": "Cra 12 #45-67",
-      "created_at": "2024-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
+Returns:
+- `schemaReady`: whether the tables exist.
+- Table and history record counts.
+- `hasData` and `isEmpty` to determine whether to migrate or reset.
 
 ---
 
-**GET /api/patients/:id**
-Get patient by numeric ID.
+### 7.3 Patients (SQL + MongoDB history)
 
-```
-GET /api/patients/1
-```
-
----
-
-**POST /api/patients**
-Create patient.
-
-```
-POST /api/patients
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "New Patient",
-  "email": "new.patient@mail.com",
-  "phone": "3000000000",
-  "address": "Calle 123 #45-67"
-}
-```
-
-**Constraints:**
-- `name` and `email` required.
-- `email` must be unique.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/patients` | List all patients |
+| GET | `/api/patients/:id` | Get patient by numeric ID |
+| POST | `/api/patients` | Create patient (`name`, `email` required; `email` unique) |
+| PUT | `/api/patients/:id` | Update patient |
+| GET | `/api/patients/:email/history` | Medical history from MongoDB (appointments + summary) |
 
 ---
 
-**PUT /api/patients/:id**
-Update patient.
+### 7.4 Doctors (CRUD + MongoDB sync)
 
-```
-PUT /api/patients/1
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Valeria Gomez Updated",
-  "phone": "3005550000"
-}
-```
-
-- Only provided fields are updated.
-- Email uniqueness is validated.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/doctors` | List all doctors (optional `?specialty=`) |
+| GET | `/api/doctors/:id` | Get doctor by ID |
+| POST | `/api/doctors` | Create doctor (`name`, `email`, `specialty` required; `email` unique) |
+| PUT | `/api/doctors/:id` | Update doctor and propagate name/email changes to MongoDB histories |
+| DELETE | `/api/doctors/:id` | Delete doctor (only if no related appointments) |
 
 ---
 
-**GET /api/patients/:email/history**
-Patient history from MongoDB.
+### 7.5 Treatments
 
-```
-GET /api/patients/valeria.g@mail.com/history
-```
-
-Response:
-```json
-{
-  "ok": true,
-  "patient": {
-    "email": "valeria.g@mail.com",
-    "name": "Valeria Gomez"
-  },
-  "appointments": [ ... ],
-  "summary": {
-    "totalAppointments": 5,
-    "totalSpent": 500000,
-    "mostFrequentSpecialty": "Cardiology"
-  }
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/treatments` | List all treatments |
+| GET | `/api/treatments/:id` | Get treatment by ID |
+| POST | `/api/treatments` | Create treatment (`code`, `description`, `cost`; `code` unique, `cost > 0`) |
 
 ---
 
-### 9.3 Doctors (full CRUD)
+### 7.6 Insurances
 
-**GET /api/doctors**
-List all doctors.
-
-Optional query param:
-- `specialty` (case-insensitive)
-
-```
-GET /api/doctors?specialty=Cardiology
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/insurances` | List all insurances |
+| GET | `/api/insurances/:id` | Get insurance by ID |
+| POST | `/api/insurances` | Create insurance (`name`, `coverage_percentage` 0–100; `name` unique) |
 
 ---
 
-**GET /api/doctors/:id**
-Get doctor by ID.
-
-```
-GET /api/doctors/1
-```
-
----
-
-**POST /api/doctors**
-Create doctor.
-
-```
-POST /api/doctors
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Dr. New Example",
-  "email": "new.example@saludplus.com",
-  "specialty": "Cardiology"
-}
-```
-
-**Validations:**
-- `name`, `email`, `specialty` are required.
-- `email` must be unique.
-
----
-
-**PUT /api/doctors/:id**
-Update doctor and propagate to MongoDB.
-
-```
-PUT /api/doctors/1
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Dr. Carlos Ruiz Updated",
-  "email": "c.ruiz.updated@saludplus.com",
-  "specialty": "Cardiology"
-}
-```
-
-- If `email` or `name` changes, they are also updated inside `patient_histories.appointments`.
-
----
-
-**DELETE /api/doctors/:id**
-Delete doctor (only if there are no appointments).
-
-```
-DELETE /api/doctors/1
-```
-
-- Returns `400` if the doctor has related appointments.
-
----
-
-### 9.4 Treatments
-
-**GET /api/treatments**
-List all treatments.
-
-```json
-{
-  "ok": true,
-  "treatments": [
-    {
-      "id": 1,
-      "code": "TRT-001",
-      "description": "General Consultation",
-      "cost": 120000,
-      "created_at": "2024-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-**GET /api/treatments/:id**
-Get treatment by ID.
-
-```
-GET /api/treatments/1
-```
-
----
-
-**POST /api/treatments**
-Create treatment.
-
-```
-POST /api/treatments
-Content-Type: application/json
-```
-
-```json
-{
-  "code": "TRT-999",
-  "description": "Test Treatment",
-  "cost": 123456
-}
-```
-
-**Validations:**
-- `code`, `description`, `cost` required.
-- `code` must be unique.
-- `cost` must be a positive number.
-
----
-
-### 9.5 Insurances
-
-**GET /api/insurances**
-List all insurances.
-
-```json
-{
-  "ok": true,
-  "insurances": [
-    {
-      "id": 1,
-      "name": "ProteccionMedica",
-      "coverage_percentage": 60,
-      "created_at": "2024-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-**GET /api/insurances/:id**
-Get insurance by ID.
-
-```
-GET /api/insurances/1
-```
-
----
-
-**POST /api/insurances**
-Create insurance.
-
-```
-POST /api/insurances
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "NuevoSeguro",
-  "coverage_percentage": 75
-}
-```
-
-**Validations:**
-- `name` and `coverage_percentage` required.
-- `name` must be unique.
-- `coverage_percentage` must be between `0` and `100`.
-
----
-
-### 9.6 Appointments (SQL + Mongo sync)
+### 7.7 Appointments (SQL + MongoDB sync)
 
 **POST /api/appointments**
-Create a new appointment (SQL) and append it to patient history (MongoDB).
 
-```
-POST /api/appointments
-Content-Type: application/json
-```
+Validates required fields and foreign keys (`patient_id`, `doctor_id`, `treatment_id`, `insurance_id`), inserts the appointment into PostgreSQL, and adds a subdocument to `patienthistories.appointments` (upsert by `patientEmail`).
 
 ```json
 {
@@ -648,30 +387,17 @@ Content-Type: application/json
 }
 ```
 
-**Validations:**
-- All fields are required.
-- `amount_paid` must be a non-negative number.
-- `patient_id`, `doctor_id`, `treatment_id`, `insurance_id` must exist in their respective tables.
-
-**Side effects:**
-- Inserts into `appointments` in PostgreSQL.
-- Adds a new embedded appointment into the corresponding `patient_histories` document in MongoDB (creating it if necessary).
-
 ---
 
-### 9.7 Revenue Report
+### 7.8 Revenue Report
 
-**GET /api/reports/revenue**
+**GET /api/reports/revenue?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD**
 
-Query params (optional):
-- `startDate` (YYYY-MM-DD)
-- `endDate` (YYYY-MM-DD)
+Returns:
+- `totalRevenue` (sum of `amount_paid`)
+- `byInsurance`: total and appointment count per insurer
+- `period` used for filtering
 
-```
-GET /api/reports/revenue?startDate=2024-01-01&endDate=2024-03-31
-```
-
-Response:
 ```json
 {
   "ok": true,
@@ -691,10 +417,15 @@ Response:
   }
 }
 ```
-## 10. Colección de Postman (Sugerida)
 
-Crea una colección en Postman llamada **SaludPlus API** con las siguientes solicitudes:
+---
 
+## 8. Suggested Postman Collection
+
+**Environment variable:** `baseUrl = http://localhost:3000`
+
+Suggested requests:
+- `GET {{baseUrl}}/api/status`
 - `GET {{baseUrl}}/api/simulacro`
 - `POST {{baseUrl}}/api/simulacro/migrate`
 - `GET {{baseUrl}}/api/patients`
@@ -717,54 +448,49 @@ Crea una colección en Postman llamada **SaludPlus API** con las siguientes soli
 - `GET {{baseUrl}}/api/reports/revenue`
 - `GET {{baseUrl}}/api/reports/revenue?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`
 
-Variables de entorno:
-
-```text
-baseUrl      = http://localhost:3000
-patientEmail = valeria.g@mail.com
-```
-
 ---
 
-## 11. Cómo Comenzar desde Cero (Para el Docente)
+## 9. Getting Started from Scratch (For the Instructor)
 
-1. Clona el repositorio e instala las dependencias.
-2. Crea el archivo `.env` a partir de `.env.example` y completa las credenciales de Supabase y MongoDB.
-3. Asegúrate de que el archivo CSV esté en `./data/simulacro_saludplus_data.csv`.
-4. Permite tu IP o `0.0.0.0/0` en **MongoDB Atlas Network Access**.
-5. Ejecuta:
+1. Clone the repo and install dependencies (`npm install`).
+2. Create `.env` from `.env.example` and configure Supabase, MongoDB, and the CSV path.
+3. Copy the CSV to `./data/simulacro_saludplus_data.csv`.
+4. Configure IP access in MongoDB Atlas.
+5. Run:
 
 ```bash
 npm run dev
 ```
 
-Las tablas e índices se crean automáticamente en Supabase.
+6. Check `GET /api/status`:
+  - If `schemaReady: false` → verify `.env` / PostgreSQL connection.
+  - If `schemaReady: true` and `isEmpty: true` → run the migration.
 
-6. Ejecuta la migración (vía Postman o CLI):
+7. Run the migration:
 
 ```text
-POST /api/simulacro/migrate  { "clearBefore": true }
+POST /api/simulacro/migrate
+{
+  "clearBefore": true
+}
 ```
 
-7. Usa los endpoints de la API o los dashboards (Supabase / Atlas) para inspeccionar los datos.
+8. Check `GET /api/status` again to verify record counts.
+9. Test the endpoints from Section 7 (patients, doctors, histories, reports).
 
-Para limpiar completamente ambas bases de datos y reiniciar:
+To fully reset and start over:
 
 ```bash
-npm run reset    # Elimina todas las tablas y la colección MongoDB
-npm run dev      # Recrea el esquema
-# POST /api/simulacro/migrate   # Carga los datos nuevamente
+npm run reset
+npm run dev
+# POST /api/simulacro/migrate { "clearBefore": true }
 ```
 
 ---
 
-## 12. Notas y Buenas Prácticas
+## 10. Notes & Best Practices
 
-- El archivo `.env` **nunca** se sube a Git (ver `.gitignore`).
-- Todas las operaciones de escritura usan `async/await` y manejan errores con los códigos de estado HTTP apropiados.
-- Las migraciones SQL y el procesamiento del CSV están diseñados para ser **idempotentes**:
-    - Volver a ejecutar la migración **no** duplicará pacientes, médicos, aseguradoras, tratamientos ni citas.
-- MongoDB utiliza `findOneAndUpdate` con `upsert` para mantener las historias clínicas sincronizadas.
-
-## 13.  Documentación con diagramas visuales
-![supabase-schema.svg](data/supabase-schema.svg)
+- The `.env` file is **never** committed to Git (listed in `.gitignore`).
+- All operations use `async/await` and return appropriate HTTP status codes (`400`, `404`, `500`…).
+- SQL migration and CSV loading are **idempotent** — re-running will not duplicate patients, doctors, insurers, treatments, or appointments.
+- MongoDB uses `findOneAndUpdate` with `upsert` to keep patient histories in sync with new appointments.

@@ -314,87 +314,364 @@ npm run dev           # Recrea el esquema (tablas) automáticamente
 
 ## 9. Documentación de la API
 
-**URL Base:**
+**Base URL:**
 
 ```
 http://localhost:3000
 ```
 
-### 9.1 Simulacro / Migración
+---
 
-**GET /api/simulacro**  
-Retorna información de la API y los endpoints disponibles.
+### 9.1 Simulacro / Migration
 
-**POST /api/simulacro/migrate**  
-Cuerpo:
+**GET /api/simulacro**
+Returns API info and available endpoints.
 
+**POST /api/simulacro/migrate**
+
+Body:
 ```json
 {
   "clearBefore": true
 }
 ```
 
-Comportamiento:
-- Opcionalmente limpia los datos existentes.
-- Deduplica pacientes, médicos, aseguradoras y tratamientos.
-- Inserta citas con las FK correspondientes.
-- Construye/actualiza `patienthistories` en MongoDB.
+**Behavior:**
+- Optionally clears existing data.
+- Loads CSV into PostgreSQL and MongoDB.
+- Idempotent: running it again does not duplicate data.
 
 ---
 
-### 9.2 Médicos
+### 9.2 Patients (SQL + MongoDB for history)
 
-**GET /api/doctors**  
-Parámetros de consulta:
-- `specialty` (opcional, filtro sin distinción de mayúsculas/minúsculas).
-
-Respuesta:
+**GET /api/patients**
+List all patients.
 
 ```json
 {
   "ok": true,
-  "doctors": [
+  "patients": [
     {
       "id": 1,
-      "name": "Dr. Carlos Ruiz",
-      "email": "c.ruiz@saludplus.com",
-      "specialty": "Cardiology",
+      "name": "Valeria Gomez",
+      "email": "valeria.g@mail.com",
+      "phone": "3005555555",
+      "address": "Cra 12 #45-67",
       "created_at": "2024-01-01T00:00:00.000Z"
     }
   ]
 }
 ```
 
-**GET /api/doctors/:id**  
-Retorna `200` con los datos del médico, o `404` si no existe.
+---
 
-**PUT /api/doctors/:id**  
-Cuerpo:
+**GET /api/patients/:id**
+Get patient by numeric ID.
+
+```
+GET /api/patients/1
+```
+
+---
+
+**POST /api/patients**
+Create patient.
+
+```
+POST /api/patients
+Content-Type: application/json
+```
 
 ```json
 {
-  "name": "Dr. Carlos Ruiz Actualizado",
-  "email": "c.ruiz.nuevo@saludplus.com",
+  "name": "New Patient",
+  "email": "new.patient@mail.com",
+  "phone": "3000000000",
+  "address": "Calle 123 #45-67"
+}
+```
+
+**Constraints:**
+- `name` and `email` required.
+- `email` must be unique.
+
+---
+
+**PUT /api/patients/:id**
+Update patient.
+
+```
+PUT /api/patients/1
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Valeria Gomez Updated",
+  "phone": "3005550000"
+}
+```
+
+- Only provided fields are updated.
+- Email uniqueness is validated.
+
+---
+
+**GET /api/patients/:email/history**
+Patient history from MongoDB.
+
+```
+GET /api/patients/valeria.g@mail.com/history
+```
+
+Response:
+```json
+{
+  "ok": true,
+  "patient": {
+    "email": "valeria.g@mail.com",
+    "name": "Valeria Gomez"
+  },
+  "appointments": [ ... ],
+  "summary": {
+    "totalAppointments": 5,
+    "totalSpent": 500000,
+    "mostFrequentSpecialty": "Cardiology"
+  }
+}
+```
+
+---
+
+### 9.3 Doctors (full CRUD)
+
+**GET /api/doctors**
+List all doctors.
+
+Optional query param:
+- `specialty` (case-insensitive)
+
+```
+GET /api/doctors?specialty=Cardiology
+```
+
+---
+
+**GET /api/doctors/:id**
+Get doctor by ID.
+
+```
+GET /api/doctors/1
+```
+
+---
+
+**POST /api/doctors**
+Create doctor.
+
+```
+POST /api/doctors
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Dr. New Example",
+  "email": "new.example@saludplus.com",
   "specialty": "Cardiology"
 }
 ```
 
-Comportamiento:
-- Valida que el email sea único.
-- Actualiza el médico en PostgreSQL.
-- Propaga los cambios de nombre/email a `patienthistories.appointments` en MongoDB.
+**Validations:**
+- `name`, `email`, `specialty` are required.
+- `email` must be unique.
 
 ---
 
-### 9.3 Reporte de Ingresos
+**PUT /api/doctors/:id**
+Update doctor and propagate to MongoDB.
 
-**GET /api/reports/revenue**  
-Parámetros de consulta (opcionales):
+```
+PUT /api/doctors/1
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Dr. Carlos Ruiz Updated",
+  "email": "c.ruiz.updated@saludplus.com",
+  "specialty": "Cardiology"
+}
+```
+
+- If `email` or `name` changes, they are also updated inside `patient_histories.appointments`.
+
+---
+
+**DELETE /api/doctors/:id**
+Delete doctor (only if there are no appointments).
+
+```
+DELETE /api/doctors/1
+```
+
+- Returns `400` if the doctor has related appointments.
+
+---
+
+### 9.4 Treatments
+
+**GET /api/treatments**
+List all treatments.
+
+```json
+{
+  "ok": true,
+  "treatments": [
+    {
+      "id": 1,
+      "code": "TRT-001",
+      "description": "General Consultation",
+      "cost": 120000,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+**GET /api/treatments/:id**
+Get treatment by ID.
+
+```
+GET /api/treatments/1
+```
+
+---
+
+**POST /api/treatments**
+Create treatment.
+
+```
+POST /api/treatments
+Content-Type: application/json
+```
+
+```json
+{
+  "code": "TRT-999",
+  "description": "Test Treatment",
+  "cost": 123456
+}
+```
+
+**Validations:**
+- `code`, `description`, `cost` required.
+- `code` must be unique.
+- `cost` must be a positive number.
+
+---
+
+### 9.5 Insurances
+
+**GET /api/insurances**
+List all insurances.
+
+```json
+{
+  "ok": true,
+  "insurances": [
+    {
+      "id": 1,
+      "name": "ProteccionMedica",
+      "coverage_percentage": 60,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+**GET /api/insurances/:id**
+Get insurance by ID.
+
+```
+GET /api/insurances/1
+```
+
+---
+
+**POST /api/insurances**
+Create insurance.
+
+```
+POST /api/insurances
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "NuevoSeguro",
+  "coverage_percentage": 75
+}
+```
+
+**Validations:**
+- `name` and `coverage_percentage` required.
+- `name` must be unique.
+- `coverage_percentage` must be between `0` and `100`.
+
+---
+
+### 9.6 Appointments (SQL + Mongo sync)
+
+**POST /api/appointments**
+Create a new appointment (SQL) and append it to patient history (MongoDB).
+
+```
+POST /api/appointments
+Content-Type: application/json
+```
+
+```json
+{
+  "appointment_id": "APT-9999",
+  "appointment_date": "2024-05-01",
+  "patient_id": 1,
+  "doctor_id": 1,
+  "treatment_id": 1,
+  "insurance_id": 1,
+  "amount_paid": 50000
+}
+```
+
+**Validations:**
+- All fields are required.
+- `amount_paid` must be a non-negative number.
+- `patient_id`, `doctor_id`, `treatment_id`, `insurance_id` must exist in their respective tables.
+
+**Side effects:**
+- Inserts into `appointments` in PostgreSQL.
+- Adds a new embedded appointment into the corresponding `patient_histories` document in MongoDB (creating it if necessary).
+
+---
+
+### 9.7 Revenue Report
+
+**GET /api/reports/revenue**
+
+Query params (optional):
 - `startDate` (YYYY-MM-DD)
 - `endDate` (YYYY-MM-DD)
 
-Respuesta:
+```
+GET /api/reports/revenue?startDate=2024-01-01&endDate=2024-03-31
+```
 
+Response:
 ```json
 {
   "ok": true,
@@ -409,59 +686,11 @@ Respuesta:
     ],
     "period": {
       "startDate": "2024-01-01",
-      "endDate": "2024-12-31"
+      "endDate": "2024-03-31"
     }
   }
 }
 ```
-
----
-
-### 9.4 Historia Clínica del Paciente
-
-**GET /api/patients/:email/history**  
-Ejemplo:
-
-```
-GET /api/patients/valeria.g@mail.com/history
-```
-
-Respuesta:
-
-```json
-{
-  "ok": true,
-  "patient": {
-    "email": "valeria.g@mail.com",
-    "name": "Valeria Gomez"
-  },
-  "appointments": [
-    {
-      "appointmentId": "APT-1001",
-      "date": "2024-01-07",
-      "doctorName": "Dr. Carlos Ruiz",
-      "doctorEmail": "c.ruiz@saludplus.com",
-      "specialty": "Cardiology",
-      "treatmentCode": "TRT-007",
-      "treatmentDescription": "Skin Treatment",
-      "treatmentCost": 200000,
-      "insuranceProvider": "ProteccionMedica",
-      "coveragePercentage": 60,
-      "amountPaid": 80000
-    }
-  ],
-  "summary": {
-    "totalAppointments": 5,
-    "totalSpent": 500000,
-    "mostFrequentSpecialty": "Cardiology"
-  }
-}
-```
-
-Retorna `404` si el paciente no existe.
-
----
-
 ## 10. Colección de Postman (Sugerida)
 
 Crea una colección en Postman llamada **SaludPlus API** con las siguientes solicitudes:

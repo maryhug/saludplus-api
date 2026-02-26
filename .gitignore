@@ -1,4 +1,13 @@
+# Dependencias de Node
 node_modules/
-.env
+
+# Logs
+logs/
 *.log
-.idea
+
+# Archivos de entorno (credenciales, URLs de BD, etc.)
+.env
+
+# Archivos del sistema operativo / IDEs
+.idea/
+

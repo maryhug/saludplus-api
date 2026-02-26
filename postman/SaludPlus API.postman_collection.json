@@ -1,0 +1,512 @@
+{
+  "info": {
+    "_postman_id": "b57f16a1-6694-4ac3-b15b-af385b6d7b95",
+    "name": "SaludPlus API",
+    "description": "Colección de endpoints para probar la API SaludPlus (PostgreSQL + MongoDB).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "45055582",
+    "_collection_link": "https://go.postman.co/collection/45055582-b57f16a1-6694-4ac3-b15b-af385b6d7b95?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 - Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "status"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 - Simulacro info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/simulacro",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "simulacro"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 - Migrar datos (clearBefore)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clearBefore\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/simulacro/migrate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "simulacro",
+            "migrate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 - Listar pacientes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/patients",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "patients"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 - Obtener paciente por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/patients/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "patients",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 - Crear paciente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Nuevo Paciente Demo\",\n  \"email\": \"paciente.demo@example.com\",\n  \"phone\": \"3001234567\",\n  \"address\": \"Calle 123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/patients",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "patients"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 - Actualizar paciente",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Paciente Demo Editado\",\n  \"email\": \"paciente.demo@example.com\",\n  \"phone\": \"3000000000\",\n  \"address\": \"Nueva dirección\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/patients/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "patients",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 - Historial paciente (Mongo)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/patients/{{patientEmailDemo}}/history",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "patients",
+            "{{patientEmailDemo}}",
+            "history"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "09 - Listar doctores",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "doctors"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10 - Obtener doctor por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "doctors",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "11 - Crear doctor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dr. Demo\",\n  \"email\": \"dr.demo@example.com\",\n  \"specialty\": \"DemoSpecialty\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "doctors"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "12 - Actualizar doctor",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dr. Demo Editado\",\n  \"email\": \"dr.demo@example.com\",\n  \"specialty\": \"Cardiology\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "doctors",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "13 - Eliminar doctor (ID sin citas)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors/999",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "doctors",
+            "999"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "14 - Listar tratamientos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/treatments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "treatments"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "15 - Obtener tratamiento por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/treatments/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "treatments",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "16 - Crear tratamiento",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"TRT-DEMO\",\n  \"description\": \"Tratamiento demo\",\n  \"cost\": 123000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/treatments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "treatments"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "17 - Listar aseguradoras",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/insurances",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "insurances"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "18 - Obtener aseguradora por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/insurances/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "insurances",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "19 - Crear aseguradora",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Seguro Demo\",\n  \"coverage_percentage\": 50\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/insurances",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "insurances"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "20 - Crear cita",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appointment_id\": \"APT-DEMO-001\",\n  \"appointment_date\": \"2024-01-10\",\n  \"patient_id\": 1,\n  \"doctor_id\": 1,\n  \"treatment_id\": 1,\n  \"insurance_id\": 1,\n  \"amount_paid\": 80000\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/appointments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "appointments"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "21 - Reporte ingresos (todos)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/reports/revenue",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reports",
+            "revenue"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "22 - Reporte ingresos (rango fechas)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/reports/revenue?startDate=2024-01-01&endDate=2024-12-31",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reports",
+            "revenue"
+          ],
+          "query": [
+            {
+              "key": "startDate",
+              "value": "2024-01-01"
+            },
+            {
+              "key": "endDate",
+              "value": "2024-12-31"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "patientEmailDemo",
+      "value": "paula.h@mail.com"
+    }
+  ]
+}

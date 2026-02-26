@@ -9,6 +9,10 @@ app.use('/api/simulacro', require('./routes/simulacro'));
 app.use('/api/doctors',   require('./routes/doctors'));
 app.use('/api/reports',   require('./routes/reports'));
 app.use('/api/patients',  require('./routes/patients'));
+app.use('/api/treatments', require('./routes/treatments'));
+app.use('/api/insurances', require('./routes/insurances'));
+app.use('/api/appointments', require('./routes/appointments'));
+
 
 // 404 handler
 app.use((req, res) => res.status(404).json({ ok: false, error: 'Route not found' }));

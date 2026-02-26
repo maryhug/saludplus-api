@@ -64,4 +64,58 @@ const updateDoctor = async (id, { name, email, specialty }) => {
     return result.rows[0];
 };
 
-module.exports = { getDoctors, getDoctorById, updateDoctor };
+const createDoctor = async ({ name, email, specialty }) => {
+    if (!name || !email || !specialty) {
+        const err = new Error('name, email and specialty are required');
+        err.status = 400;
+        throw err;
+    }
+
+    // Verificar email único
+    const existing = await query(
+        'SELECT id FROM doctors WHERE email = $1',
+        [email.toLowerCase()]
+    );
+    if (existing.rows.length > 0) {
+        const err = new Error('Email already in use by another doctor');
+        err.status = 400;
+        throw err;
+    }
+
+    const result = await query(
+        `INSERT INTO doctors (name, email, specialty)
+     VALUES ($1, $2, $3)
+     RETURNING id, name, email, specialty, created_at`,
+        [name, email.toLowerCase(), specialty]
+    );
+
+    return result.rows[0];
+};
+
+const deleteDoctor = async (id) => {
+    // Verificar que no tenga citas asociadas
+    const appts = await query(
+        'SELECT COUNT(*) AS count FROM appointments WHERE doctor_id = $1',
+        [id]
+    );
+    const count = parseInt(appts.rows[0].count);
+    if (count > 0) {
+        const err = new Error('Doctor has related appointments and cannot be deleted');
+        err.status = 400;
+        throw err;
+    }
+
+    const result = await query(
+        'DELETE FROM doctors WHERE id = $1 RETURNING id, name, email, specialty',
+        [id]
+    );
+    return result.rows[0] || null;
+};
+
+module.exports = {
+    getDoctors,
+    getDoctorById,
+    updateDoctor,
+    createDoctor,
+    deleteDoctor,
+};

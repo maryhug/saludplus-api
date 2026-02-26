@@ -1,0 +1,60 @@
+const { query } = require('../config/postgres.js');
+
+const listTreatments = async () => {
+    const result = await query(
+        `SELECT id, code, description, cost, created_at
+     FROM treatments
+     ORDER BY code`
+    );
+    return result.rows;
+};
+
+const getTreatmentById = async (id) => {
+    const result = await query(
+        `SELECT id, code, description, cost, created_at
+     FROM treatments
+     WHERE id = $1`,
+        [id]
+    );
+    return result.rows[0] || null;
+};
+
+const createTreatment = async ({ code, description, cost }) => {
+    if (!code || !description || cost === undefined) {
+        const err = new Error('code, description and cost are required');
+        err.status = 400;
+        throw err;
+    }
+
+    const existing = await query(
+        'SELECT id FROM treatments WHERE code = $1',
+        [code.trim()]
+    );
+    if (existing.rows.length > 0) {
+        const err = new Error('Treatment code already exists');
+        err.status = 400;
+        throw err;
+    }
+
+    const numericCost = Number(cost);
+    if (Number.isNaN(numericCost) || numericCost <= 0) {
+        const err = new Error('cost must be a positive number');
+        err.status = 400;
+        throw err;
+    }
+
+    const result = await query(
+        `INSERT INTO treatments (code, description, cost)
+     VALUES ($1, $2, $3)
+     RETURNING id, code, description, cost, created_at`,
+        [code.trim(), description.trim(), numericCost]
+    );
+
+    return result.rows[0];
+};
+
+module.exports = {
+    listTreatments,
+    getTreatmentById,
+    createTreatment,
+};

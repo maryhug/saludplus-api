@@ -1,5 +1,28 @@
 const router = require('express').Router();
-const { getDoctors, getDoctorById, updateDoctor } = require('../services/doctorService');
+const {
+    getDoctors,
+    getDoctorById,
+    updateDoctor,
+    createDoctor,
+    deleteDoctor,
+} = require('../services/doctorService');
+
+
+// CREATE doctor
+router.post('/', async (req, res) => {
+    try {
+        const { name, email, specialty } = req.body;
+        const doctor = await createDoctor({ name, email, specialty });
+        res.status(201).json({
+            ok: true,
+            message: 'Doctor created successfully',
+            doctor,
+        });
+    } catch (err) {
+        const status = err.status || 500;
+        res.status(status).json({ ok: false, error: err.message });
+    }
+});
 
 router.get('/', async (req, res) => {
     try {
@@ -31,5 +54,24 @@ router.put('/:id', async (req, res) => {
         res.status(status).json({ ok: false, error: err.message });
     }
 });
+
+// DELETE doctor
+router.delete('/:id', async (req, res) => {
+    try {
+        const doctor = await deleteDoctor(req.params.id);
+        if (!doctor) {
+            return res.status(404).json({ ok: false, error: 'Doctor not found' });
+        }
+        res.json({
+            ok: true,
+            message: 'Doctor deleted successfully',
+            doctor,
+        });
+    } catch (err) {
+        const status = err.status || 500;
+        res.status(status).json({ ok: false, error: err.message });
+    }
+});
+
 
 module.exports = router;

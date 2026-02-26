@@ -767,4 +767,4 @@ npm run dev      # Recrea el esquema
 - MongoDB utiliza `findOneAndUpdate` con `upsert` para mantener las historias clínicas sincronizadas.
 
 ## 13.  Documentación con diagramas visuales
-![supabase-schema.png](data/supabase-schema.png)
+![supabase-schema.svg](data/supabase-schema.svg)
